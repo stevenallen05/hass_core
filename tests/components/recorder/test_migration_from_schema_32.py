@@ -32,7 +32,6 @@ from homeassistant.components.recorder.queries import (
     get_migration_changes,
     select_event_type_ids,
 )
-from homeassistant.components.recorder.tasks import EntityIDPostMigrationTask
 from homeassistant.components.recorder.util import (
     execute_stmt_lambda_element,
     session_scope,
@@ -737,7 +736,7 @@ async def test_post_migrate_entity_ids(
 
     await _async_wait_migration_done(hass)
     # This is a threadsafe way to add a task to the recorder
-    recorder_mock.queue_task(EntityIDPostMigrationTask())
+    recorder_mock.queue_task(migration.EntityIDPostMigrationTask())
     await _async_wait_migration_done(hass)
 
     def _fetch_migrated_states():
