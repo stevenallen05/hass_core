@@ -237,6 +237,79 @@ def test_deprecated_current_constants(
     )
 
 
+async def test_temperature_features_is_valid(
+    hass: HomeAssistant, register_test_integration: MockConfigEntry
+) -> None:
+    """Test correct features for setting temperature."""
+
+    class MockClimateTempEntity(MockClimateEntity):
+        @property
+        def supported_features(self) -> int:
+            """Return supported features."""
+            return ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
+
+    class MockClimateTempRangeEntity(MockClimateEntity):
+        @property
+        def supported_features(self) -> int:
+            """Return supported features."""
+            return ClimateEntityFeature.TARGET_TEMPERATURE
+
+    climate_temp_entity = MockClimateTempEntity(
+        name="test", entity_id="climate.test_temp"
+    )
+    climate_temp_range_entity = MockClimateTempRangeEntity(
+        name="test", entity_id="climate.test_range"
+    )
+
+    setup_test_component_platform(
+        hass,
+        DOMAIN,
+        entities=[climate_temp_entity, climate_temp_range_entity],
+        from_config_entry=True,
+    )
+    await hass.config_entries.async_setup(register_test_integration.entry_id)
+    await hass.async_block_till_done()
+
+    with pytest.raises(
+        ServiceValidationError,
+        match="The entity does not support to set target temperature, only to set a range",
+    ) as exc:
+        await hass.services.async_call(
+            DOMAIN,
+            SERVICE_SET_TEMPERATURE,
+            {
+                "entity_id": "climate.test_temp",
+                "temperature": 20,
+            },
+            blocking=True,
+        )
+    assert (
+        str(exc.value)
+        == "The entity does not support to set target temperature, only to set a range"
+    )
+    assert exc.value.translation_key == "not_supported_temp_feature"
+
+    with pytest.raises(
+        ServiceValidationError,
+        match="The entity does not support to set target temperature range, only to set a single temperature",
+    ) as exc:
+        await hass.services.async_call(
+            DOMAIN,
+            SERVICE_SET_TEMPERATURE,
+            {
+                "entity_id": "climate.test_range",
+                "target_temp_low": 20,
+                "target_temp_high": 25,
+            },
+            blocking=True,
+        )
+    assert (
+        str(exc.value)
+        == "The entity does not support to set target temperature range, only to set a single temperature"
+    )
+    assert exc.value.translation_key == "not_supported_temp_range_feature"
+
+
 async def test_preset_mode_validation(
     hass: HomeAssistant, register_test_integration: MockConfigEntry
 ) -> None:
